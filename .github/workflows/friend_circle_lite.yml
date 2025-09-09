@@ -5,6 +5,11 @@ on:
     - cron: "0 */4 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: write
+  metadata: read
+
 env:
   TZ: Asia/Shanghai
 
