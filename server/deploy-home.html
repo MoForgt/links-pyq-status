@@ -8,7 +8,7 @@
 
 <script>
 // 获取GitHub Actions最近一次运行时间
-fetch('https://fc.xrbk.cn/all.json')
+fetch('./all.json')
   .then(response => response.json())
   .then(data => {
     const lastUpdateTime = data.statistical_data?.last_updated_time || '无法获取';

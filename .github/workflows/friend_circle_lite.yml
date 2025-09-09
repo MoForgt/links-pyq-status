@@ -59,7 +59,10 @@ jobs:
       run: |
         echo "Checking RSS feeds..."
         python run.py
-        ls ./temp
+        echo "Generated files:"
+        ls -la *.json
+        echo "Temp folder:"
+        ls -la ./temp
     
     - name: Upload temp file as artifact
       uses: actions/upload-artifact@v4
@@ -76,7 +79,9 @@ jobs:
     - name: Commit changes
       run: |
         mkdir pages
-        cp -r main ./static/index.html ./static/readme.md ./static/favicon.ico ./static/bg-light.webp ./temp/cache.json ./static/bg-dark.webp all.json errors.json pages/
+        cp -r main ./server/deploy-home.html ./static/readme.md ./static/favicon.ico ./static/bg-light.webp ./temp/cache.json ./static/bg-dark.webp all.json errors.json status.json pages/
+        # 将deploy-home.html重命名为index.html
+        mv pages/deploy-home.html pages/index.html
         cd pages
         git init
         git add .
