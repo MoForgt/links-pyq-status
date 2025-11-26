@@ -9,8 +9,6 @@
 *.ipynb
 *.log
 
-# 忽略数据文件
-*.json
 
 *.bat
 
