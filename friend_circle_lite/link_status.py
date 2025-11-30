@@ -48,6 +48,9 @@ class LinkStatusChecker:
             'Connection': 'keep-alive'
         }
         
+        # SSL验证配置
+        self.ssl_verify = self.detection_config.get('ssl_verify', False)
+        
         # 错误计数存储
         self.error_count = {}
         
@@ -196,7 +199,12 @@ class LinkStatusChecker:
         """批量检测链接状态"""
         
         timeout = aiohttp.ClientTimeout(total=self.timeout)
-        connector = aiohttp.TCPConnector(limit=self.batch_size, limit_per_host=5)
+        
+        # 根据SSL验证设置配置连接器
+        if self.ssl_verify:
+            connector = aiohttp.TCPConnector(limit=self.batch_size, limit_per_host=5)
+        else:
+            connector = aiohttp.TCPConnector(limit=self.batch_size, limit_per_host=5, ssl=False)
         
         async with aiohttp.ClientSession(
             headers=self.headers,
@@ -269,7 +277,8 @@ class LinkStatusChecker:
         """加载友链数据"""
         try:
             logging.info(f"📡 从 {json_url} 获取友情链接数据...")
-            response = requests.get(json_url, headers=self.headers, timeout=30)
+            verify = self.ssl_verify
+            response = requests.get(json_url, headers=self.headers, timeout=30, verify=verify)
             response.raise_for_status()
             
             data = response.json()
