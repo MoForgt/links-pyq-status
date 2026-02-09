@@ -37,7 +37,7 @@ class LinkStatusChecker:
         self.success_status_min = self.detection_config.get('success_status_min', 200)
         self.success_status_max = self.detection_config.get('success_status_max', 399)
         self.use_backup_api = self.detection_config.get('use_backup_api', True)
-        self.backup_api_url = self.detection_config.get('backup_api_url', 'https://v2.xxapi.cn/api/status')
+        self.backup_api_url = self.detection_config.get('backup_api_url', 'https://v1.nsuuu.com/api/netCheck')
         
         # 请求头配置
         self.headers = {
@@ -83,7 +83,7 @@ class LinkStatusChecker:
         
         try:
             logging.info(f"🔍 {name}: 使用备用API检测...")
-            api_url = f"{self.backup_api_url}?url={url}"
+            api_url = f"{self.backup_api_url}?host={url}"
             start_time = time.time()
             
             async with session.get(api_url, timeout=self.timeout) as response:
@@ -91,7 +91,7 @@ class LinkStatusChecker:
                 
                 if response.status == 200:
                     data = await response.json()
-                    status_code = int(data.get('data', 0))
+                    status_code = int(data.get('data', {}).get('https', {}).get('status', 0))
                     success = int(data.get('code', 0)) == 200 and (
                         self.success_status_min <= status_code <= self.success_status_max
                     )

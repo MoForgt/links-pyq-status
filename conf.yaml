@@ -88,5 +88,5 @@ link_status:
   success_status_min: 200
   success_status_max: 399
   use_backup_api: true
-  backup_api_url: "https://v2.xxapi.cn/api/status"
+  backup_api_url: "https://v1.nsuuu.com/api/netCheck"
   ssl_verify: False
