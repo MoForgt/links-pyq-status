@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="icon" href="./favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Links Status</title>
+    <title>新锐博客朋友圈及友链监控</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -371,7 +371,6 @@
                 card.innerHTML = `
                     <div class="article-title">${escapeHtml(article.title)}</div>
                     <div class="article-meta">
-                        <img src="${article.avatar || './favicon.ico'}" onerror="this.src='./favicon.ico'">
                         <span>${escapeHtml(article.author)}</span>
                         <span>·</span>
                         <span>${article.created ? article.created.substring(0, 10) : ''}</span>
@@ -413,7 +412,6 @@
             list.innerHTML = links.map(item => `
                 <div class="link-item">
                     <span class="link-name">
-                        <img src="${item.favicon || './favicon.ico'}" width="16" height="16" style="border-radius: 50%;" onerror="this.src='./favicon.ico'">
                         ${escapeHtml(item.name)}
                     </span>
                     <span class="link-status ${item.success ? 'ok' : 'fail'}">${item.success ? '正常' : '异常'}</span>
