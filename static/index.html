@@ -371,7 +371,6 @@
                 card.innerHTML = `
                     <div class="article-title">${escapeHtml(article.title)}</div>
                     <div class="article-meta">
-                        <img src="${article.avatar}">
                         <span>${escapeHtml(article.author)}</span>
                         <span>·</span>
                         <span>${article.created ? article.created.substring(0, 10) : ''}</span>
@@ -413,7 +412,6 @@
             list.innerHTML = links.map(item => `
                 <div class="link-item">
                     <span class="link-name">
-                        <img src="${item.favicon}" width="16" height="16" style="border-radius: 50%;">
                         ${escapeHtml(item.name)}
                     </span>
                     <span class="link-status ${item.success ? 'ok' : 'fail'}">${item.success ? '正常' : '异常'}</span>
