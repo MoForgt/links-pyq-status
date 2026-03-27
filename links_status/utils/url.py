@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 from urllib.parse import urlparse, urljoin
 import re
@@ -5,12 +6,14 @@ import re
 def replace_non_domain(link: str, blog_url: str) -> str:
     """
     暂未实现
-    检测并替换字符串中的非正常域名部分（如 IP 地址或 localhost），替换为 blog_url。
-    替换后强制使用 https，且考虑 blog_url 尾部是否有斜杠。
+    检测并替换字符串中的非正常域名部分（如 IP 地址或 localhost），替换为 blog_url
+    替换后强制使用 https，且考虑 blog_url 尾部是否有斜杠
 
-    :param link: 原始地址字符串
-    :param blog_url: 替换为的博客地址
-    :return: 替换后的地址字符串
+    参数:
+        link: 原始地址字符串
+        blog_url: 替换为的博客地址
+    返回:
+        str: 替换后的地址字符串
     """
     try:
         parsed = urlparse(link)

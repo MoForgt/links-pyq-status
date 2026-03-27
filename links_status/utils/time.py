@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 from dateutil import parser
 from datetime import datetime, timezone, timedelta
@@ -7,10 +8,10 @@ def format_published_time(time_str):
     格式化发布时间为统一格式 YYYY-MM-DD HH:MM
 
     参数:
-    time_str (str): 输入的时间字符串，可能是多种格式。
+        time_str (str): 输入的时间字符串，可能是多种格式
 
     返回:
-    str: 格式化后的时间字符串，若解析失败返回空字符串。
+        str: 格式化后的时间字符串，若解析失败返回空字符串
     """
     # 尝试自动解析输入时间字符串
     try:

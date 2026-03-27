@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 from links_status.utils.json import read_json, write_json
 
@@ -7,11 +8,11 @@ def load_cache(cache_file: str):
     
     data = read_json(cache_file)
     if data is None:
-        logging.info(f"缓存文件 {cache_file} 不存在或无法读取，将自动创建�?)
+        logging.info(f"缓存文件 {cache_file} 不存在或无法读取，将自动创建")
         return []
 
     if not isinstance(data, list):
-        logging.warning(f"缓存文件 {cache_file} 格式异常（应为列表）。将忽略�?)
+        logging.warning(f"缓存文件 {cache_file} 格式异常（应为列表），将忽略")
         return []
 
     norm = []
@@ -30,6 +31,6 @@ def save_cache(cache_file: str, cache_items: list[dict]):
 
     out = [{'name': i['name'], 'url': i['url']} for i in cache_items]
     if write_json(cache_file, out):
-        logging.info(f"缓存已保存到 {cache_file}（{len(out)} 条）�?)
+        logging.info(f"缓存已保存到 {cache_file}（{len(out)} 条）")
     else:
         logging.error(f"保存缓存文件 {cache_file} 失败")
