@@ -1,4 +1,4 @@
-name: Friend Circle Lite
+name: Links Status
 
 on:
   schedule:
@@ -13,7 +13,7 @@ env:
   TZ: Asia/Shanghai
 
 jobs:
-  friend-circle-lite:
+  links-status:
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +54,6 @@ jobs:
 
     - name: Check RSS feeds
       env:
-        SMTP_PWD: ${{ secrets.SMTP_PWD }}
         FCL_REPO: ${{ github.repository }}
       run: |
         echo "Checking RSS feeds..."
@@ -79,13 +78,12 @@ jobs:
     - name: Commit changes
       run: |
         mkdir pages
-        cp -r main ./server/deploy-home.html ./static/readme.md ./static/favicon.ico ./static/bg-light.webp ./static/edgeone.json ./temp/cache.json ./static/bg-dark.webp all.json errors.json status.json pages/
-        # 将deploy-home.html重命名为index.html
-        mv pages/deploy-home.html pages/index.html
+        cp -r ./static/index.html ./static/favicon.ico ./temp/cache.json all.json errors.json status.json pages/
+        mv pages/index.html pages/index.html
         cd pages
         git init
         git add .
-        git commit -m "⏱️ $(date +"%Y年%m月%d日-%H时%M分") GitHub Actions定时更新"
+        git commit -m "$(date +"%Y年%m月%d日-%H时%M分") GitHub Actions定时更新"
         git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:page
 
     - name: Delete Workflow Runs
@@ -97,7 +95,7 @@ jobs:
   keepalive-workflow:
     name: Keepalive Workflow
     if: ${{ always() }}
-    needs: friend-circle-lite
+    needs: links-status
     runs-on: ubuntu-latest
     permissions:
       actions: write
