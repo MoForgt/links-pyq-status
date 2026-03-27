@@ -85,6 +85,13 @@ jobs:
         git commit -m "$(date +"%Y年%m月%d日-%H时%M分") GitHub Actions定时更新"
         git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:page
 
+    - name: Trigger Tencent Cloud Pages Webhook
+      run: |
+        echo "Triggering Tencent Cloud Pages webhook..."
+        curl -X POST "https://pages-api.cloud.tencent.com/v1/webhook/3c204cf9de1a98d4366d36a8d3f5937f5462b39b53025d2e34edd33021b3e6ec" \
+          -H "Content-Type: application/json" \
+          -d '{"message": "GitHub Actions build completed"}' || echo "Webhook trigger completed"
+
     - name: Delete Workflow Runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
