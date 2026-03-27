@@ -79,7 +79,6 @@ jobs:
       run: |
         mkdir pages
         cp -r ./static/index.html ./static/favicon.ico ./temp/cache.json all.json errors.json status.json pages/
-        mv pages/index.html pages/index.html
         cd pages
         git init
         git add .
