@@ -78,7 +78,7 @@ jobs:
     - name: Commit changes
       run: |
         mkdir pages
-        cp -r ./static/index.html ./static/favicon.ico ./temp/cache.json all.json errors.json status.json pages/
+        cp -r ./static/index.html ./static/favicon.ico ./static/edgeone.json ./temp/cache.json all.json errors.json status.json pages/
         cd pages
         git init
         git add .
