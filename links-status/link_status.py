@@ -14,7 +14,7 @@ import aiohttp
 import requests
 from zoneinfo import ZoneInfo
 
-from friend_circle_lite.utils.json import write_json
+from links-status.utils.json import write_json
 
 
 class LinkStatusChecker:
@@ -37,7 +37,7 @@ class LinkStatusChecker:
         self.success_status_min = self.detection_config.get('success_status_min', 200)
         self.success_status_max = self.detection_config.get('success_status_max', 399)
         self.use_backup_api = self.detection_config.get('use_backup_api', True)
-        self.backup_api_url = self.detection_config.get('backup_api_url', 'https://v1.nsuuu.com/api/netCheck')
+        self.backup_api_urls = self.detection_config.get('backup_api_urls', ['https://api.nsuuu.com/', 'https://v2.xxapi.cn'])
         
         # 请求头配置
         self.headers = {
@@ -77,65 +77,78 @@ class LinkStatusChecker:
         return dt.strftime('%Y-%m-%d %H:%M:%S')
     
     async def check_with_backup_api(self, session: aiohttp.ClientSession, url: str, name: str) -> Optional[Dict[str, Any]]:
-        """使用备用API检测链接"""
+        """使用备用API检测链接，依次尝试多个备用API"""
         if not self.use_backup_api:
             return None
         
-        try:
-            logging.info(f"🔍 {name}: 使用备用API检测...")
-            api_url = f"{self.backup_api_url}?host={url}"
-            start_time = time.time()
-            
-            async with session.get(api_url, timeout=self.timeout) as response:
-                latency = round((time.time() - start_time), 2)
+        for api_index, backup_api_url in enumerate(self.backup_api_urls):
+            api_name = f"备用API-{api_index + 1}"
+            try:
+                logging.info(f"🔍 {name}: 使用{api_name} ({backup_api_url}) 检测...")
                 
-                if response.status == 200:
-                    data = await response.json()
-                    status_code = int(data.get('data', {}).get('https', {}).get('status', 0))
-                    success = int(data.get('code', 0)) == 200 and (
-                        self.success_status_min <= status_code <= self.success_status_max
-                    )
-                    
-                    if success:
-                        logging.info(f"✅ {name}: 备用API检测成功 (状态码: {status_code}, 延迟: {latency}s)")
-                        return {
-                            'success': True,
-                            'latency': latency,
-                            'status': status_code,
-                            'attempts': 4,  # 表示使用了备用API
-                            'method': 'backup_api'
-                        }
-                    else:
-                        logging.warning(f"❌ {name}: 备用API检测失败 (状态码: {status_code})")
-                        return {
-                            'success': False,
-                            'latency': -1,
-                            'status': status_code,
-                            'attempts': 4,
-                            'method': 'backup_api',
-                            'error': f'备用API检测失败，状态码: {status_code}'
-                        }
+                # 根据API类型选择参数
+                if '/api/status' in backup_api_url:
+                    # 第二个API使用url参数
+                    api_url = f"{backup_api_url}?url={url}"
                 else:
-                    logging.warning(f"❌ {name}: 备用API请求失败 (HTTP {response.status})")
-                    return {
-                        'success': False,
-                        'latency': -1,
-                        'status': 0,
-                        'attempts': 4,
-                        'method': 'backup_api',
-                        'error': f'备用API请求失败，HTTP {response.status}'
-                    }
+                    # 第一个API使用host参数
+                    api_url = f"{backup_api_url}?host={url}"
+                
+                start_time = time.time()
+                
+                async with session.get(api_url, timeout=self.timeout) as response:
+                    latency = round((time.time() - start_time), 2)
                     
-        except Exception as e:
-            logging.error(f"❌ {name}: 备用API检测异常 - {str(e)}")
-            return {
-                'success': False,
-                'latency': -1,
-                'status': 0,
-                'attempts': 4,
-                'method': 'backup_api',
-                'error': f'备用API检测异常: {str(e)}'
-            }
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # 根据API类型解析返回数据
+                        if '/api/status' in backup_api_url:
+                            # 第二个API返回格式: {"code":200,"msg":"...","data":"403",...}
+                            # data字段直接是状态码字符串
+                            status_code = int(data.get('data', 0))
+                            success = int(data.get('code', 0)) == 200 and (
+                                self.success_status_min <= status_code <= self.success_status_max
+                            )
+                        else:
+                            # 第一个API返回格式: {"code":200,"data":{"https":{"status":200,...}}}
+                            status_code = int(data.get('data', {}).get('https', {}).get('status', 0))
+                            success = int(data.get('code', 0)) == 200 and (
+                                self.success_status_min <= status_code <= self.success_status_max
+                            )
+                        
+                        if success:
+                            logging.info(f"✅ {name}: {api_name}检测成功 (状态码: {status_code}, 延迟: {latency}s)")
+                            return {
+                                'success': True,
+                                'latency': latency,
+                                'status': status_code,
+                                'attempts': 4 + api_index,  # 表示使用了备用API
+                                'method': f'backup_api_{api_index + 1}'
+                            }
+                        else:
+                            logging.warning(f"❌ {name}: {api_name}检测失败 (状态码: {status_code})")
+                            # 继续尝试下一个备用API
+                            continue
+                    else:
+                        logging.warning(f"❌ {name}: {api_name}请求失败 (HTTP {response.status})")
+                        # 继续尝试下一个备用API
+                        continue
+                        
+            except Exception as e:
+                logging.error(f"❌ {name}: {api_name}检测异常 - {str(e)}")
+                # 继续尝试下一个备用API
+                continue
+        
+        # 所有备用API都失败了
+        return {
+            'success': False,
+            'latency': -1,
+            'status': 0,
+            'attempts': 4 + len(self.backup_api_urls),
+            'method': 'all_backup_apis_failed',
+            'error': f'所有备用API检测均失败'
+        }
     
     async def check_link_with_retry(self, session: aiohttp.ClientSession, url: str, name: str) -> Dict[str, Any]:
         """带重试的链接检测"""

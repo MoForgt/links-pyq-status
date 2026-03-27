@@ -1,220 +1,436 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
-
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
-    <meta name="description" content="🐱一个精简版，无后端，且仅利用github action运行的精简版友链朋友圈程序，兼容fc的json格式信息，同时支持推送友圈更新，支持他人订阅个人站点并在更新时发送邮箱推送。">
+    <link rel="icon" href="./favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Friend-Circle-Lite</title>
+    <title>Friend Circle Lite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 0.5rem;
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #222;
+        }
+        .status {
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+        .status::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        /* 统计卡片 */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+        }
+        @media (max-width: 1024px) {
+            .stats { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
+        .stat-card {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e5e5e5;
+        }
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #222;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #999;
+            margin-top: 0.25rem;
+        }
+
+        /* 文章卡片 */
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #444;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0 1rem;
+        }
+        .articles {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+        }
+        @media (max-width: 1024px) {
+            .articles { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .articles { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .articles { grid-template-columns: 1fr; }
+        }
+        .article-card {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e5e5e5;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .article-card:hover {
+            border-color: #ccc;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .article-title {
+            font-size: 0.95rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #999;
+        }
+        .article-meta img {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        /* 友链状态 */
+        .links-status {
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e5e5e5;
+            overflow: hidden;
+        }
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+        }
+        @media (max-width: 1024px) {
+            .links-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .links-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .links-grid { grid-template-columns: 1fr; }
+        }
+        .links-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fafafa;
+        }
+        .links-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #444;
+        }
+        .links-summary {
+            font-size: 0.8rem;
+            color: #999;
+            display: flex;
+            gap: 1rem;
+        }
+        .links-summary .ok { color: #22c55e; }
+        .links-summary .fail { color: #ef4444; }
+        .links-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .link-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            border-right: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+        }
+        .link-item:nth-child(4n) { border-right: none; }
+        @media (max-width: 1024px) {
+            .link-item:nth-child(4n) { border-right: 1px solid #f0f0f0; }
+            .link-item:nth-child(3n) { border-right: none; }
+        }
+        @media (max-width: 768px) {
+            .link-item:nth-child(3n) { border-right: 1px solid #f0f0f0; }
+            .link-item:nth-child(2n) { border-right: none; }
+        }
+        @media (max-width: 480px) {
+            .link-item { border-right: none; }
+        }
+        .link-item:hover { background: #fafafa; }
+        .link-name {
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .link-status {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+        .link-status.ok {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .link-status.fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* 加载更多 */
+        .load-more {
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .load-more button {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 0.5rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .load-more button:hover {
+            background: #f5f5f5;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 2rem;
+        }
+        .footer a {
+            color: #666;
+            text-decoration: none;
+        }
+    </style>
 </head>
-<style>
-    body {
-        background-image: url('./bg-light.webp');
-        background-size: cover;
-        background-attachment: fixed;
-        background-repeat: no-repeat;
-        background-position: center;
-        font-family: Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-        overflow-y: scroll;
-        overflow-x: hidden;
-        height: fit-content;
-    }
-    #theme-toggle {
-        z-index: 1000;
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 90px;
-        height: 30px;
-        background-color: #007BFF;
-        color: white;
-        border: none;
-        border-radius: 20px;
-        font-size: 16px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    .container {
-        background: rgba(255, 255, 255, 0.8);
-        display: flex;
-        text-align: center;
-        align-items: center;
-        height: 100vh;
-        width: 100%;
-        flex-direction: column;
-        justify-content: center;
-    }
-
-    .root-container {
-        width: 100%;
-        margin-top: 40px;
-        max-width: 1100px;
-    }
-    
-    @media (max-width: 1200px) {
-        .root-container {
-            max-width: 95%;
-            margin-top: 20px;
-        }
-    }
-
-    .avatar {
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-    }
-    p {
-        color: #666;
-        margin-bottom: 30px;
-    }
-    .button-container {
-        margin-top: 20px;
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-    }
-    .button {
-        background-color: rgb(255, 255, 255);
-        border: 2px solid #007BFF;
-        color: #007BFF;
-        padding: 10px 20px;
-        border-radius: 25px;
-        text-decoration: none;
-        font-size: 16px;
-        font-weight: bold;
-        display: inline-block;
-        transition: background-color 0.3s, color 0.3s;
-    }
-    .button:hover {
-        background-color: #007BFF;
-        color: white;
-    }
-
-    .card-author,
-    .card-date {
-        height: fit-content !important;
-    }
-
-    .scroll-down-icon {
-        position: absolute;
-        bottom: 20px;
-        height: 24px;
-        color: #007BFF;
-        animation: bounce 1.5s infinite;
-    }
-    .scroll-down-icon::before,
-    .scroll-down-icon::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 12px;
-        height: 12px;
-        opacity: .8;
-        border-left: 3px solid #007BFF;
-        border-bottom: 3px solid #007BFF;
-        transform: translate(-50%, -50%) rotate(-45deg);
-    }
-    .scroll-down-icon::after {
-        top: 80%;
-        opacity: .6;
-    }
-    @keyframes bounce {
-        0%, 100% {
-            transform: translateY(0);
-            opacity: .6;
-        }
-        50% {
-            transform: translateY(-10px);
-            opacity: 1;
-        }
-    }
-
-    /* 暗色模式样式 */
-[data-theme="dark"] body {
-    background-image: url('./bg-dark.webp');
-    color: #ffffff;
-}
-
-[data-theme="dark"] .container {
-    background: rgba(30, 30, 30, 0.8);
-}
-
-[data-theme="dark"] p {
-    color: #cccccc;
-}
-
-[data-theme="dark"] .button {
-    background-color: #333333;
-    border: 2px solid #007BFF;
-    color: #007BFF;
-}
-
-[data-theme="dark"] .button:hover {
-    background-color: #007BFF;
-    color: white;
-}
-
-[data-theme="dark"] .scroll-down-icon {
-    color: #007BFF;
-}
-</style>
-
 <body>
-    <div class="container">
-        <img src="./favicon.ico" alt="Avatar" class="avatar">
-        <p>Friend-Circle-Lite<br>服务已运行</p>
-        <div class="button-container">
-            <a href="https://blog.liushen.fun/posts/4dc716ec/" class="button" target="_blank">查看文档</a>
-            <a href="/all.json" class="button">测试接口</a>
+    <div class="header">
+        <img src="./favicon.ico" alt="Logo" class="avatar">
+        <h1>Friend Circle Lite</h1>
+        <p class="status">服务运行中</p>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats" id="stats">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-friends">-</div>
+            <div class="stat-label">友链</div>
         </div>
-        <a href="#" class="scroll-down-icon" id="scroll-down-button"></a>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-articles">-</div>
+            <div class="stat-label">文章</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-active">-</div>
+            <div class="stat-label">活跃</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-ok">-</div>
+            <div class="stat-label">正常</div>
+        </div>
     </div>
-    <div class="root-container">
-        <div id="friend-circle-lite-root"></div>
+
+    <!-- 文章列表 -->
+    <div class="section-title">最新文章</div>
+    <div class="articles" id="articles">
+        <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 2rem;">加载中...</div>
     </div>
-    <button id="theme-toggle">暗色模式</button>
-<script>
-    if (typeof UserConfig === 'undefined') {
-        var UserConfig = {
-            // 填写你的fc Lite地址
-            private_api_url: './',
-            // 点击加载更多时，一次最多加载几篇文章，默认20
-            page_turning_number: 24,
-            // 头像加载失败时，默认头像地址
-            error_img: './favicon.ico' // 'https://i.p-i.vip/30/20240815-66bced9226a36.webp'
+    <div class="load-more" id="load-more" style="display: none;">
+        <button onclick="loadMore()">加载更多</button>
+    </div>
+
+    <!-- 友链状态 -->
+    <div class="section-title">友链状态</div>
+    <div class="links-status" id="links-status">
+        <div class="links-header">
+            <span class="links-title">站点检测</span>
+            <span class="links-summary">加载中...</span>
+        </div>
+        <div class="links-grid" id="links-list">
+        </div>
+    </div>
+
+    <div class="footer">
+        Powered by <a href="https://www.xrbk.cn" target="_blank">新锐博客</a>
+    </div>
+
+    <script>
+        let allArticles = [];
+        let displayedCount = 0;
+        const pageSize = 12;
+
+        // 获取数据
+        async function fetchData() {
+            try {
+                const [allRes, statusRes] = await Promise.all([
+                    fetch('./all.json'),
+                    fetch('./status.json')
+                ]);
+
+                const allData = await allRes.json();
+                const statusData = await statusRes.json();
+
+                // 更新统计
+                updateStats(allData, statusData);
+
+                // 显示文章
+                allArticles = allData.article_data || [];
+                displayArticles();
+
+                // 显示友链状态
+                displayLinksStatus(statusData);
+            } catch (e) {
+                document.getElementById('articles').innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #999; padding: 2rem;">数据加载失败</div>';
+            }
         }
-    }
-</script>
-<script>
-    const scrollButton = document.getElementById('scroll-down-button');
-    const targetElement = document.getElementById('friend-circle-lite-root');
-    scrollButton.addEventListener('click', function(event) {
-        event.preventDefault();
-        targetElement.scrollIntoView({ behavior: 'smooth' });
-    });
 
-    const button = document.getElementById('theme-toggle');
-    button.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        button.textContent = newTheme === 'light' ? '暗色模式' : '亮色模式';
-    });
-</script>
-<link rel="stylesheet" href="./main/fclite.css">
-<script src="./main/fclite.js"></script>
+        // 更新统计
+        function updateStats(allData, statusData) {
+            const stats = allData.statistical_data || {};
+            document.getElementById('stat-friends').textContent = stats.friends_num || 0;
+            document.getElementById('stat-articles').textContent = stats.article_num || 0;
+            document.getElementById('stat-active').textContent = stats.active_num || 0;
+
+            const links = statusData.link_status || [];
+            const okCount = links.filter(d => d.success).length;
+            const totalCount = links.length;
+            document.getElementById('stat-ok').textContent = `${okCount}/${totalCount}`;
+        }
+
+        // 显示文章
+        function displayArticles() {
+            const container = document.getElementById('articles');
+            const toShow = allArticles.slice(displayedCount, displayedCount + pageSize);
+
+            if (displayedCount === 0) {
+                container.innerHTML = '';
+            }
+
+            toShow.forEach(article => {
+                const card = document.createElement('div');
+                card.className = 'article-card';
+                card.onclick = () => window.open(article.link, '_blank');
+                card.innerHTML = `
+                    <div class="article-title">${escapeHtml(article.title)}</div>
+                    <div class="article-meta">
+                        <img src="${article.avatar || './favicon.ico'}" onerror="this.src='./favicon.ico'">
+                        <span>${escapeHtml(article.author)}</span>
+                        <span>·</span>
+                        <span>${article.created ? article.created.substring(0, 10) : ''}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            displayedCount += toShow.length;
+
+            // 显示/隐藏加载更多按钮
+            document.getElementById('load-more').style.display =
+                displayedCount < allArticles.length ? 'block' : 'none';
+        }
+
+        // 加载更多
+        function loadMore() {
+            displayArticles();
+        }
+
+        // 显示友链状态
+        function displayLinksStatus(statusData) {
+            const list = document.getElementById('links-list');
+            const summary = document.querySelector('.links-summary');
+            const links = statusData.link_status || [];
+
+            if (links.length === 0) {
+                list.innerHTML = '<div class="link-item" style="grid-column: 1/-1;"><span style="color: #999;">暂无数据</span></div>';
+                return;
+            }
+
+            const okCount = links.filter(d => d.success).length;
+            const failCount = links.length - okCount;
+            summary.innerHTML = `
+                <span class="ok"><span style="display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; margin-right: 4px;"></span>${okCount} 正常</span>
+                ${failCount > 0 ? `<span class="fail"><span style="display: inline-block; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; margin-right: 4px;"></span>${failCount} 异常</span>` : ''}
+            `;
+
+            list.innerHTML = links.map(item => `
+                <div class="link-item">
+                    <span class="link-name">
+                        <img src="${item.favicon || './favicon.ico'}" width="16" height="16" style="border-radius: 50%;" onerror="this.src='./favicon.ico'">
+                        ${escapeHtml(item.name)}
+                    </span>
+                    <span class="link-status ${item.success ? 'ok' : 'fail'}">${item.success ? '正常' : '异常'}</span>
+                </div>
+            `).join('');
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 初始化
+        fetchData();
+    </script>
 </body>
-
 </html>

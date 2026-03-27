@@ -1,5 +1,5 @@
 import logging
-from friend_circle_lite.utils.json import read_json, write_json
+from links-status.utils.json import read_json, write_json
 
 def load_cache(cache_file: str):
     if not cache_file:
