@@ -356,7 +356,7 @@
             document.getElementById('stat-ok').textContent = `${okCount}/${totalCount}`;
 
             // 显示更新时间
-            const updateTime = allData.last_updated || statusData.last_checked;
+            const updateTime = allData.last_updated_time;
             if (updateTime) {
                 document.getElementById('update-time').textContent = updateTime;
             }
