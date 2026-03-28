@@ -309,7 +309,8 @@
     </div>
 
     <div class="footer">
-        Powered by <a href="https://www.xrbk.cn" target="_blank">新锐博客</a> . 本项目由<a href="https://github.com/willow-god/Friend-Circle-Lite" target="_blank">轻量朋友圈</a>二次开发
+        <div>Powered by <a href="https://www.xrbk.cn" target="_blank">新锐博客</a> . 本项目由<a href="https://github.com/willow-god/Friend-Circle-Lite" target="_blank">轻量朋友圈</a>二次开发</div>
+        <div style="margin-top: 0.5rem; color: #bbb;">更新时间：<span id="update-time">-</span></div>
     </div>
 
     <script>
@@ -353,6 +354,12 @@
             const okCount = links.filter(d => d.success).length;
             const totalCount = links.length;
             document.getElementById('stat-ok').textContent = `${okCount}/${totalCount}`;
+
+            // 显示更新时间
+            const updateTime = allData.last_updated || statusData.last_checked;
+            if (updateTime) {
+                document.getElementById('update-time').textContent = updateTime;
+            }
         }
 
         // 显示文章
