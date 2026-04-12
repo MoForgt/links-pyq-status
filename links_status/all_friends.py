@@ -2,7 +2,7 @@
 import string
 import requests
 import logging
-from datetime import datetime
+e import datetime
 from zoneinfo import ZoneInfo
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -44,13 +44,28 @@ def fetch_and_process_data(json_url: str, specific_RSS: list = None, count: int 
     # 4. 建立方便判断的集合：手动源名称集合
     manual_name_set = {e['name'] for e in manual_list}
 
-    # 5. 获取朋友列表
+    # 5. 获取朋友列表（带重试机制，最多5次，间隔3秒）
     session = requests.Session()
-    try:
-        response = session.get(json_url, headers=HEADERS_JSON, timeout=timeout)
-        friends_data = response.json()
-    except Exception as e:
-        logging.error(f"无法获取链接：{json_url} ：{e}", exc_info=True)
+    friends_data = None
+    max_retries = 5
+    retry_delay = 3
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"正在获取友情链接数据（第{attempt}次尝试）...")
+            response = session.get(json_url, headers=HEADERS_JSON, timeout=timeout)
+            friends_data = response.json()
+            logging.info(f"成功获取友情链接数据（第{attempt}次尝试）")
+            break
+        except Exception as e:
+            if attempt < max_retries:
+                logging.warning(f"第{attempt}次获取友情链接数据失败：{e}，{retry_delay}秒后重试...")
+                time.sleep(retry_delay)
+            else:
+                logging.error(f"无法获取链接：{json_url}，已重试{max_retries}次：{e}", exc_info=True)
+                return None
+
+    if friends_data is None:
         return None
 
     friends = friends_data.get('friends', [])
