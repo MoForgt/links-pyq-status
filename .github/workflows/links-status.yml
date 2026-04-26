@@ -78,6 +78,11 @@ jobs:
     - name: Commit changes
       run: |
         mkdir pages
+        # 检查文件是否存在，不存在则创建空文件
+        [ -f all.json ] || echo '{"article_data":[],"statistical_data":{"friends_num":0,"active_num":0,"error_num":0,"article_num":0,"last_updated_time":""}}' > all.json
+        [ -f errors.json ] || echo '[]' > errors.json
+        [ -f status.json ] || echo '{"total_count":0,"accessible_count":0,"inaccessible_count":0,"last_updated":"","results":[]}' > status.json
+        [ -f ./temp/cache.json ] || echo '[]' > ./temp/cache.json
         cp -r ./static/index.html ./static/favicon.ico ./static/edgeone.json ./temp/cache.json all.json errors.json status.json pages/
         cd pages
         git init
