@@ -120,7 +120,7 @@ def fetch_and_process_data(json_url: str, specific_RSS: list = None, count: int 
     # 6. 并发处理
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_friend = {
-            executor.submit(process_friend, friend, session, count, specific_and_cache): friend
+            executor.submit(process_friend, friend, count, specific_and_cache): friend
             for friend in friends
         }
 

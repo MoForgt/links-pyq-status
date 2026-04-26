@@ -4,19 +4,75 @@ from datetime import datetime
 import re
 import os
 import json
-import requests
+import subprocess
 import feedparser
-from links_status import HEADERS_XML, timeout
+from links_status import HEADERS_XML
 from links_status.utils.time import format_published_time
 from links_status.utils.url import replace_non_domain
 
-def check_feed(blog_url, session):
+
+def curl_get(url: str, headers: dict = None, timeout_seconds: int = 15) -> tuple:
+    """
+    使用 curl 命令获取 HTTP 内容
+
+    参数:
+        url (str): 请求 URL
+        headers (dict): 请求头字典
+        timeout_seconds (int): 超时秒数
+
+    返回:
+        tuple: (status_code, content, success)
+    """
+    cmd = [
+        "curl", "-s", "-L", "-w", "\n%{http_code}",
+        "--connect-timeout", "10",
+        "--max-time", str(timeout_seconds),
+    ]
+
+    # 添加 headers
+    if headers:
+        for key, value in headers.items():
+            cmd.extend(["-H", f"{key}: {value}"])
+
+    # 添加 User-Agent
+    cmd.extend(["-A", HEADERS_XML.get("User-Agent", "Mozilla/5.0")])
+
+    cmd.append(url)
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds + 5)
+
+        if result.returncode != 0:
+            logging.debug(f"curl 请求失败 {url}: {result.stderr}")
+            return (0, "", False)
+
+        # 解析输出，最后一行是状态码
+        lines = result.stdout.split('\n')
+        if len(lines) < 2:
+            return (0, "", False)
+
+        try:
+            status_code = int(lines[-1])
+        except ValueError:
+            status_code = 200
+
+        content = '\n'.join(lines[:-1])
+        return (status_code, content, True)
+
+    except subprocess.TimeoutExpired:
+        logging.debug(f"curl 请求超时 {url}")
+        return (0, "", False)
+    except Exception as e:
+        logging.debug(f"curl 请求异常 {url}: {e}")
+        return (0, "", False)
+
+
+def check_feed(blog_url):
     """
     检查博客的 RSS 或 Atom 订阅链接
 
     优化点：
     - 检查 HTTP 状态码
-    - 检查 Content-Type 是否包含 xml / rss / atom
     - 检查响应内容前几百字节内是否有 RSS/Atom 的特征标签
     """
     possible_feeds = [
@@ -34,30 +90,26 @@ def check_feed(blog_url, session):
     for feed_type, path in possible_feeds:
         feed_url = blog_url.rstrip('/') + path
         try:
-            response = session.get(feed_url, headers=HEADERS_XML, timeout=timeout)
-            if response.status_code == 200:
-                # 检查 Content-Type
-                content_type = response.headers.get('Content-Type', '').lower()
-                if 'xml' in content_type or 'rss' in content_type or 'atom' in content_type:
-                    return [feed_type, feed_url]
-                
-                # 如果 Content-Type 是 text/html 或未明确，但内容本身是 RSS
-                text_head = response.text[:1000].lower()
+            status_code, content, success = curl_get(feed_url, headers=HEADERS_XML, timeout_seconds=15)
+
+            if success and status_code == 200 and content:
+                # 检查内容是否是 RSS/Atom
+                text_head = content[:1000].lower()
                 if ('<rss' in text_head or '<feed' in text_head or '<rdf:rdf' in text_head):
                     return [feed_type, feed_url]
-        except requests.RequestException:
+        except Exception:
             continue
 
     logging.warning(f"无法找到 {blog_url} 的订阅链接")
     return ['none', blog_url]
 
-def parse_feed(url, session, count=5, blog_url=''):
+
+def parse_feed(url, count=5, blog_url=''):
     """
     解析 Atom 或 RSS2 feed 并返回包含网站名称、作者、原链接和每篇文章详细内容的字典
 
     参数：
         url (str): Atom 或 RSS2 feed 的 URL
-        session (requests.Session): 用于请求的会话对象
         count (int): 获取文章数的最大数
         blog_url (str): 博客URL，用于处理链接
 
@@ -65,19 +117,28 @@ def parse_feed(url, session, count=5, blog_url=''):
         dict: 包含网站名称、作者、原链接和每篇文章详细内容的字典
     """
     try:
-        response = session.get(url, headers=HEADERS_XML, timeout=timeout)
-        response.encoding = response.apparent_encoding or 'utf-8'
-        feed = feedparser.parse(response.text)
-        
+        status_code, content, success = curl_get(url, headers=HEADERS_XML, timeout_seconds=15)
+
+        if not success or status_code != 200 or not content:
+            logging.error(f"无法获取FEED内容：{url}，状态码：{status_code}")
+            return {
+                'website_name': '',
+                'author': '',
+                'link': '',
+                'articles': []
+            }
+
+        feed = feedparser.parse(content)
+
         result = {
             'website_name': feed.feed.title if 'title' in feed.feed else '',
             'author': feed.feed.author if 'author' in feed.feed else '',
             'link': feed.feed.link if 'link' in feed.feed else '',
             'articles': []
         }
-        
+
         for _ , entry in enumerate(feed.entries):
-            
+
             if 'published' in entry:
                 published = format_published_time(entry.published)
             elif 'updated' in entry:
@@ -86,10 +147,10 @@ def parse_feed(url, session, count=5, blog_url=''):
             else:
                 published = ''
                 logging.warning(f"文章 {entry.title} 未包含任何时间信息")
-            
+
             # 处理链接中可能存在的错误
             article_link = replace_non_domain(entry.link, blog_url) if 'link' in entry else ''
-            
+
             article = {
                 'title': entry.title if 'title' in entry else '',
                 'author': result['author'],
@@ -99,12 +160,12 @@ def parse_feed(url, session, count=5, blog_url=''):
                 'content': entry.content[0].value if 'content' in entry and entry.content else entry.description if 'description' in entry else ''
             }
             result['articles'].append(article)
-        
+
         # 对文章按时间排序
         result['articles'] = sorted(result['articles'], key=lambda x: datetime.strptime(x['published'], '%Y-%m-%d %H:%M'), reverse=True)
         if count < len(result['articles']):
             result['articles'] = result['articles'][:count]
-        
+
         return result
     except Exception as e:
         logging.error(f"无法解析FEED地址：{url}，错误信息: {str(e)}")
@@ -115,16 +176,16 @@ def parse_feed(url, session, count=5, blog_url=''):
             'articles': []
         }
 
-def process_friend(friend, session: requests.Session, count: int, specific_and_cache=None):
+
+def process_friend(friend, count: int, specific_and_cache=None):
     """
     处理单个朋友的博客信息
-    
+
     参数：
         friend (list/tuple): [name, blog_url, avatar]
-        session (requests.Session): 请求会话
         count (int): 每个博客最大文章数
         specific_and_cache (list[dict]): 合并后的特殊 + 缓存列表
-    
+
     返回：
         dict: 处理结果
     """
@@ -159,7 +220,7 @@ def process_friend(friend, session: requests.Session, count: int, specific_and_c
         logging.info(f"{name} 使用预设 RSS 源：{feed_url} （source={source_used}）")
     else:
         # 2. 自动探测
-        feed_type, feed_url = check_feed(blog_url, session)
+        feed_type, feed_url = check_feed(blog_url)
         source_used = 'auto'
         logging.info(f"{name} 自动探测 RSS：type：{feed_type}, url：{feed_url}")
 
@@ -170,7 +231,7 @@ def process_friend(friend, session: requests.Session, count: int, specific_and_c
     articles, parse_error = [], False
     if feed_type != 'none' and feed_url:
         try:
-            feed_info = parse_feed(feed_url, session, count, blog_url)
+            feed_info = parse_feed(feed_url, count, blog_url)
             if isinstance(feed_info, dict) and 'articles' in feed_info:
                 articles = [
                     {
@@ -194,10 +255,10 @@ def process_friend(friend, session: requests.Session, count: int, specific_and_c
     # 4. 如果缓存 RSS 无效则重新探测
     if parse_error and source_used in ('cache', 'unknown'):
         logging.info(f"缓存 RSS 无效，重新探测：{name} ({blog_url})")
-        new_type, new_url = check_feed(blog_url, session)
+        new_type, new_url = check_feed(blog_url)
         if new_type != 'none' and new_url:
             try:
-                feed_info = parse_feed(new_url, session, count, blog_url)
+                feed_info = parse_feed(new_url, count, blog_url)
                 if isinstance(feed_info, dict) and 'articles' in feed_info:
                     articles = [
                         {
@@ -242,53 +303,50 @@ def process_friend(friend, session: requests.Session, count: int, specific_and_c
         'source_used': source_used,
     }
 
+
 def get_latest_articles_from_link(url, count=5, last_articles_path="./temp/newest_posts.json"):
     """
     从指定链接获取最新的文章数据并与本地存储的上次的文章数据进行对比
 
     参数：
-        url (str): 用于获取文章数据的链接
+        url (str): 数据链接
         count (int): 获取文章数的最大数
-        last_articles_path (str): 本地存储上次文章数据的文件路径
+        last_articles_path (str): 上次文章数据存储路径
 
     返回：
-        list: 更新的文章列表，如果没有更新的文章则返回 None
+        tuple: (新文章列表, 当前文章列表)
     """
-    local_file = last_articles_path
-    
-    # 检查和解析 feed
-    session = requests.Session()
-    feed_type, feed_url = check_feed(url, session)
-    if feed_type == 'none':
-        logging.error(f"无法获取 {url} 的文章数据")
-        return None
+    try:
+        # 使用 curl 获取数据
+        status_code, content, success = curl_get(url, timeout_seconds=15)
 
-    # 获取最新的文章数据
-    latest_data = parse_feed(feed_url, session ,count)
-    latest_articles = latest_data['articles']
-    
-    # 读取本地存储的上次的文章数据
-    if os.path.exists(local_file):
-        with open(local_file, 'r', encoding='utf-8') as file:
-            last_data = json.load(file)
+        if not success or status_code != 200:
+            logging.error(f"无法获取数据：{url}，状态码：{status_code}")
+            return [], []
+
+        data = json.loads(content)
+        articles = data.get('article_data', [])[:count]
+    except Exception as e:
+        logging.error(f"无法获取最新文章数据：{url}，错误信息: {str(e)}")
+        return [], []
+
+    # 读取上次的文章数据
+    if os.path.exists(last_articles_path):
+        try:
+            with open(last_articles_path, 'r', encoding='utf-8') as f:
+                last_articles = json.load(f)
+        except Exception as e:
+            logging.warning(f"读取上次文章数据失败：{str(e)}")
+            last_articles = []
     else:
-        last_data = {'articles': []}
-    
-    last_articles = last_data['articles']
+        last_articles = []
 
-    # 找到更新的文章
-    updated_articles = []
-    last_titles = {article['link'] for article in last_articles}
+    # 对比文章数据，找出新文章
+    new_articles = [article for article in articles if article not in last_articles]
 
-    for article in latest_articles:
-        if article['link'] not in last_titles:
-            updated_articles.append(article)
-    
-    logging.info(f"从 {url} 获取到 {len(latest_articles)} 篇文章，其中 {len(updated_articles)} 篇为新文章")
+    # 保存当前文章数据到本地
+    os.makedirs(os.path.dirname(last_articles_path), exist_ok=True)
+    with open(last_articles_path, 'w', encoding='utf-8') as f:
+        json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    # 更新本地存储的文章数据
-    with open(local_file, 'w', encoding='utf-8') as file:
-        json.dump({'articles': latest_articles}, file, ensure_ascii=False, indent=4)
-    
-    # 如果有更新的文章，返回这些文章，否则返回 None
-    return updated_articles if updated_articles else None
+    return new_articles, articles
