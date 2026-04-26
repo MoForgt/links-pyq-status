@@ -127,9 +127,15 @@ python -m http.server 8080
 
 ## 技术栈
 
-- **后端**: Python 3.x + aiohttp + feedparser
+- **后端**: Python 3.x + curl + feedparser
 - **前端**: 原生 HTML + CSS + JavaScript
 - **部署**: GitHub Actions
+
+## 注意事项
+
+- **JSON 数据获取**：使用 `curl` 命令获取友链 JSON 数据，支持 5 次自动重试
+- **RSS 抓取**：自动探测各站点的 RSS 地址并抓取文章
+- **GitHub Actions**：建议在 Workflow 中启用 `actions/checkout` 和 `actions/setup-python`
 
 ## 许可证
 

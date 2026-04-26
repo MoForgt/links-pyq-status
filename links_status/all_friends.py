@@ -1,15 +1,71 @@
 # -*- coding: utf-8 -*-
-import string
-import requests
 import logging
 import time
+import subprocess
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from links_status.utils.cache import load_cache, save_cache
 from links_status.single_friend import process_friend
-from links_status import HEADERS_JSON, timeout
+from links_status import HEADERS_JSON
+
+
+def fetch_json_with_curl(json_url: str, max_retries: int = 5, retry_delay: int = 3) -> dict:
+    """
+    使用 curl 命令获取 JSON 数据，支持重试机制
+    
+    参数:
+        json_url (str): JSON 文件的 URL
+        max_retries (int): 最大重试次数
+        retry_delay (int): 重试间隔秒数
+    
+    返回:
+        dict: 解析后的 JSON 数据，失败返回 None
+    """
+    cmd = [
+        "curl", "-s", "-L",
+        "-A", HEADERS_JSON.get("User-Agent", "Mozilla/5.0"),
+        "-H", f"X-Friend-Circle: {HEADERS_JSON.get('X-Friend-Circle', '1.0')}",
+        "--connect-timeout", "10",
+        "--max-time", "30",
+        json_url
+    ]
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"正在使用 curl 获取友情链接数据（第{attempt}次尝试）...")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=35)
+            
+            if result.returncode == 0 and result.stdout:
+                friends_data = json.loads(result.stdout)
+                logging.info(f"curl 成功获取数据（第{attempt}次尝试）")
+                return friends_data
+            else:
+                error_msg = result.stderr.strip() if result.stderr else "未知错误"
+                if attempt < max_retries:
+                    logging.warning(f"第{attempt}次 curl 获取失败：{error_msg}，{retry_delay}秒后重试...")
+                    time.sleep(retry_delay)
+                else:
+                    logging.error(f"curl 获取失败（第{attempt}次）：{error_msg}")
+                    
+        except subprocess.TimeoutExpired:
+            if attempt < max_retries:
+                logging.warning(f"第{attempt}次 curl 请求超时，{retry_delay}秒后重试...")
+                time.sleep(retry_delay)
+            else:
+                logging.error(f"curl 请求超时（第{attempt}次）")
+        except json.JSONDecodeError as e:
+            logging.error(f"curl 返回数据 JSON 解析失败：{e}")
+            return None
+        except Exception as e:
+            if attempt < max_retries:
+                logging.warning(f"第{attempt}次 curl 异常：{e}，{retry_delay}秒后重试...")
+                time.sleep(retry_delay)
+            else:
+                logging.error(f"curl 异常（第{attempt}次）：{e}")
+    
+    return None
 
 def fetch_and_process_data(json_url: str, specific_RSS: list = None, count: int = 5, cache_file: str = None):
     """
@@ -45,30 +101,13 @@ def fetch_and_process_data(json_url: str, specific_RSS: list = None, count: int 
     # 4. 建立方便判断的集合：手动源名称集合
     manual_name_set = {e['name'] for e in manual_list}
 
-    # 5. 获取朋友列表（带重试机制，最多5次，间隔3秒）
-    session = requests.Session()
-    friends_data = None
-    max_retries = 5
-    retry_delay = 3
-
-    for attempt in range(1, max_retries + 1):
-        try:
-            logging.info(f"正在获取友情链接数据（第{attempt}次尝试）...")
-            response = session.get(json_url, headers=HEADERS_JSON, timeout=timeout)
-            friends_data = response.json()
-            logging.info(f"成功获取友情链接数据（第{attempt}次尝试）")
-            break
-        except Exception as e:
-            if attempt < max_retries:
-                logging.warning(f"第{attempt}次获取友情链接数据失败：{e}，{retry_delay}秒后重试...")
-                time.sleep(retry_delay)
-            else:
-                logging.error(f"无法获取链接：{json_url}，已重试{max_retries}次：{e}", exc_info=True)
-                return None
-
+    # 5. 获取朋友列表（使用 curl，带重试机制，最多5次，间隔3秒）
+    friends_data = fetch_json_with_curl(json_url, max_retries=5, retry_delay=3)
+    
     if friends_data is None:
+        logging.error(f"无法获取友情链接数据，程序退出")
         return None
-
+    
     friends = friends_data.get('friends', [])
     total_friends = len(friends)
     active_friends = 0
