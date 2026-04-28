@@ -55,13 +55,14 @@ jobs:
     - name: Check RSS feeds
       env:
         FCL_REPO: ${{ github.repository }}
+      continue-on-error: true
       run: |
         echo "Checking RSS feeds..."
-        python run.py
+        python run.py || echo "Python script completed with errors, continuing..."
         echo "Generated files:"
-        ls -la *.json
+        ls -la *.json || echo "No JSON files generated"
         echo "Temp folder:"
-        ls -la ./temp
+        ls -la ./temp || echo "Temp folder not found"
     
     - name: Upload temp file as artifact
       uses: actions/upload-artifact@v4

@@ -76,6 +76,8 @@ link_status:
 
 进入 `Actions` 页面，手动运行 workflow，或等待定时触发。
 
+> **注意**：即使友链 JSON 文件无法访问或程序运行出错，GitHub Actions 也不会发送失败邮件通知。工作流会自动创建空数据文件并继续执行，你可以通过查看 Actions 日志了解详细情况。
+
 ### 5. 部署页面
 
 使用 GitHub Pages 或其他静态托管服务部署 `static` 目录。
@@ -127,15 +129,9 @@ python -m http.server 8080
 
 ## 技术栈
 
-- **后端**: Python 3.x + curl + feedparser
+- **后端**: Python 3.x + requests + feedparser
 - **前端**: 原生 HTML + CSS + JavaScript
 - **部署**: GitHub Actions
-
-## 注意事项
-
-- **JSON 数据获取**：使用 `curl` 命令获取友链 JSON 数据，支持 5 次自动重试
-- **RSS 抓取**：自动探测各站点的 RSS 地址并抓取文章
-- **GitHub Actions**：建议在 Workflow 中启用 `actions/checkout` 和 `actions/setup-python`
 
 ## 许可证
 
