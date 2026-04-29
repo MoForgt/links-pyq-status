@@ -39,19 +39,8 @@ if config["spider_settings"]["enable"]:
     )
 
     if fetch_result is None:
-        logging.error("获取友情链接数据失败，跳过爬虫模块")
-        # 创建空的输出文件，避免后续步骤报错
-        write_json("./all.json", {
-            'statistical_data': {
-                'friends_num': 0,
-                'active_num': 0,
-                'error_num': 0,
-                'article_num': 0,
-                'last_updated_time': '',
-            },
-            'article_data': [],
-        })
-        write_json("./errors.json", [])
+        logging.info("获取友情链接数据失败，程序终止")
+        sys.exit(0)
     else:
         result, lost_friends = fetch_result
 
@@ -70,7 +59,10 @@ if config["link_status"]["enable"]:
         logging.info("开始检测友链状态...")
         status_result = check_links_status(config, "./status.json")
         logging.info(f"友链状态检测完成，可访问: {status_result['accessible_count']}, 不可访问: {status_result['inaccessible_count']}")
+    except SystemExit:
+        raise
     except Exception as e:
-        logging.error(f"友链状态检测失败: {str(e)}")
+        logging.info(f"友链状态检测失败，程序终止")
+        sys.exit(0)
 else:
     logging.info("友链状态检测未启用")
