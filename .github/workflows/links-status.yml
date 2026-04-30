@@ -52,6 +52,14 @@ jobs:
         path: './temp'
         if_no_artifact_found: warn
 
+    - name: Download existing JSON files from page branch
+      run: |
+        # 从 page 分支下载现有的 JSON 文件作为备份
+        curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/page/all.json" -o all.json.backup || echo "No existing all.json found"
+        curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/page/errors.json" -o errors.json.backup || echo "No existing errors.json found"
+        curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/page/status.json" -o status.json.backup || echo "No existing status.json found"
+        curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/page/cache.json" -o ./temp/cache.json.backup || echo "No existing cache.json found"
+
     - name: Check RSS feeds
       env:
         FCL_REPO: ${{ github.repository }}
@@ -79,11 +87,35 @@ jobs:
     - name: Commit changes
       run: |
         mkdir pages
-        # 检查文件是否存在，不存在则创建空文件
-        [ -f all.json ] || echo '{"article_data":[],"statistical_data":{"friends_num":0,"active_num":0,"error_num":0,"article_num":0,"last_updated_time":""}}' > all.json
-        [ -f errors.json ] || echo '[]' > errors.json
-        [ -f status.json ] || echo '{"total_count":0,"accessible_count":0,"inaccessible_count":0,"last_updated":"","results":[]}' > status.json
-        [ -f ./temp/cache.json ] || echo '[]' > ./temp/cache.json
+        # 检查文件是否存在，不存在则使用备份文件
+        if [ ! -f all.json ]; then
+          if [ -f all.json.backup ]; then
+            mv all.json.backup all.json
+          else
+            echo '{"article_data":[],"statistical_data":{"friends_num":0,"active_num":0,"error_num":0,"article_num":0,"last_updated_time":""}}' > all.json
+          fi
+        fi
+        if [ ! -f errors.json ]; then
+          if [ -f errors.json.backup ]; then
+            mv errors.json.backup errors.json
+          else
+            echo '[]' > errors.json
+          fi
+        fi
+        if [ ! -f status.json ]; then
+          if [ -f status.json.backup ]; then
+            mv status.json.backup status.json
+          else
+            echo '{"total_count":0,"accessible_count":0,"inaccessible_count":0,"last_updated":"","results":[]}' > status.json
+          fi
+        fi
+        if [ ! -f ./temp/cache.json ]; then
+          if [ -f ./temp/cache.json.backup ]; then
+            mv ./temp/cache.json.backup ./temp/cache.json
+          else
+            echo '[]' > ./temp/cache.json
+          fi
+        fi
         cp -r ./static/index.html ./static/favicon.ico ./static/edgeone.json ./temp/cache.json all.json errors.json status.json pages/
         cd pages
         git init
