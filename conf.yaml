@@ -5,7 +5,7 @@
 #   article_count:      请填写每个博客需要获取的最大文章数量
 spider_settings:
   enable: true
-  json_url: "https://www.xrbk.cn/links.json"
+  json_url: "https://blog.xrbk.cn/links.json"
   article_count: 5
 
 # 特殊RSS地址指定，可以置空但是不要删除！
